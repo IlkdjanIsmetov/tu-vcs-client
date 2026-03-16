@@ -68,7 +68,7 @@ public class KeycloakClient {
             HttpPost httpPost = new HttpPost(KEYCLOAK_TOKEN_URL);
 
             List<NameValuePair> formData = new ArrayList<>();
-            formData.add(new BasicNameValuePair("client_id", CLIENT_ID));
+            formData.add(new BasicNameValuePair("client_id", KEYCLOACK_CLIENT_ID));
             formData.add(new BasicNameValuePair("grant_type", "refresh_token"));
             formData.add(new BasicNameValuePair("refresh_token", currentRefreshToken));
 
