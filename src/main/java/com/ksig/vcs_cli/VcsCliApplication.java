@@ -1,5 +1,6 @@
 package com.ksig.vcs_cli;
 
+import com.ksig.vcs_cli.commands.CreateRepositoryCommand;
 import com.ksig.vcs_cli.commands.LoginCommand;
 import com.ksig.vcs_cli.commands.TestCommand;
 import picocli.CommandLine;
@@ -11,7 +12,7 @@ import java.util.concurrent.Callable;
          mixinStandardHelpOptions = true, 
          version = "1.0",
          description = "Centralized Version Control System CLI",
-         subcommands = { LoginCommand.class, TestCommand.class })
+         subcommands = { LoginCommand.class, TestCommand.class, CreateRepositoryCommand.class })
 public class VcsCliApplication implements Callable<Integer> {
 
     @Override

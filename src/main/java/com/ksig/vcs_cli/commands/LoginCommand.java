@@ -10,13 +10,12 @@ import java.util.concurrent.Callable;
 @Command(name = "login", description = "Authenticate with the centralized TU-VCS server")
 public class LoginCommand implements Callable<Integer> {
 
-    @Option(names = {"-u", "--username"}, required = true, description = "Your Keycloak username")
-    private String username;
 
-    private String password;
 
     @Override
     public Integer call() {
+        String username = System.console().readLine("Username: ");
+        String password = System.console().readLine("Password: ");
         System.out.println("Authenticating user: " + username + "...");
         KeycloakClient authClient = new KeycloakClient();
         boolean success = authClient.authenticate(username, password);

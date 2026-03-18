@@ -27,13 +27,11 @@ import static com.ksig.vcs_cli.globalParams.GlobarParams.APP_BASE_URL;
 public class CreateRepositoryCommand implements Callable<Integer> {
     ObjectWriter objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
     private static final BackendRestClient backendRestClient = new BackendRestClient();
-    @Option(names = {"-n", "--name"}, description = "repository name")
+    @Option(names = {"-n", "--name"}, required = true, description = "repository name")
     private String repository;
 
     @Option(names = {"-ra", "reqApp"}, description = "Require approval by repo master for commits")
     private boolean requireApproval;
-
-    private String description;
 
     @Override
     public Integer call() throws Exception {
@@ -53,7 +51,7 @@ public class CreateRepositoryCommand implements Callable<Integer> {
         RepositoryRequest repoRequest = new RepositoryRequest();
         repoRequest.setRepoName(repository);
         repoRequest.setRequireApproval(requireApproval);
-        description = System.console().readLine("Enter description: ");
+        String description = System.console().readLine("Enter description: ");
         repoRequest.setDescription(description);
         return repoRequest;
     }
