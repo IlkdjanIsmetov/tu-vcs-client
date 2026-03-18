@@ -13,13 +13,11 @@ public class LoginCommand implements Callable<Integer> {
     @Option(names = {"-u", "--username"}, required = true, description = "Your Keycloak username")
     private String username;
 
-    @Option(names = {"-p", "--password"}, required = true, description = "Your password")
     private String password;
 
     @Override
     public Integer call() {
         System.out.println("Authenticating user: " + username + "...");
-        
         KeycloakClient authClient = new KeycloakClient();
         boolean success = authClient.authenticate(username, password);
         
