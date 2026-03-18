@@ -66,11 +66,12 @@ public class CreateRepositoryCommand implements Callable<Integer> {
     }
 
     private void createMetaDir(String response) throws IOException {
-        Path repoMeta;
         Path repoMetaDir = Path.of(System.getProperty("user.dir")).resolve(GlobarParams.REPO_META_DIR);
         Files.createDirectories(repoMetaDir);
-        repoMeta = Files.createFile(repoMetaDir.resolve(GlobarParams.REPO_META_FILE_NAME));
-        Files.createFile(repoMetaDir.resolve(GlobarParams.ITEMS_META_FILE_NAME));
+        Path repoMeta = Files.createFile(repoMetaDir.resolve(GlobarParams.REPO_META_FILE_NAME));
+        Path fileMeta = Files.createFile(repoMetaDir.resolve(GlobarParams.ITEMS_META_FILE_NAME));
         Files.write(repoMeta, response.getBytes());
+        //няма item-и когато се създава репото
+        Files.write(fileMeta, "{}".getBytes());
     }
 }
