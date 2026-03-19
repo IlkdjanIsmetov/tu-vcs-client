@@ -49,7 +49,7 @@ public class CreateRepositoryCommand implements Callable<Integer> {
 
     private RepositoryRequest createRequestModel() {
         RepositoryRequest repoRequest = new RepositoryRequest();
-        repoRequest.setRepoName(repository);
+        repoRequest.setRepositoryName(repository);
         repoRequest.setRequireApproval(requireApproval);
         String description = System.console().readLine("Enter description: ");
         repoRequest.setDescription(description);
@@ -72,6 +72,6 @@ public class CreateRepositoryCommand implements Callable<Integer> {
         Path fileMeta = Files.createFile(repoMetaDir.resolve(GlobarParams.ITEMS_META_FILE_NAME));
         Files.write(repoMeta, response.getBytes());
         //няма item-и когато се създава репото
-        Files.write(fileMeta, "{}".getBytes());
+        Files.write(fileMeta, "[]".getBytes());
     }
 }

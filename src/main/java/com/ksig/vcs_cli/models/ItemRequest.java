@@ -1,17 +1,19 @@
 package com.ksig.vcs_cli.models;
 
+
+import com.ksig.vcs_cli.models.enums.Action;
 import com.ksig.vcs_cli.models.enums.ItemType;
 import lombok.Data;
 
 import java.util.UUID;
 
 @Data
-public class ItemMeta {
-    private UUID id;
+public class ItemRequest {
+    private UUID itemId;
     private String path;
     private ItemType itemType;
-    private UUID revisionId;
-    private Long revisionNumber;
+    private Action action;
+    private int fileSize;
     private String checksum;
-    private String storageKey;
+    private String fileRef;
 }

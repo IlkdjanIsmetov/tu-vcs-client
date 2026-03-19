@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class RepositoryRequest {
-    private String repoName;
+    private String repositoryName;
     private boolean requireApproval;
     private String description;
 }

@@ -24,7 +24,7 @@ public class FetchCommand implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         RepositoryMeta repoMeta = null;
-        Path repoMetaFile = Path.of(System.getProperty("user.home")).resolve(GlobarParams.REPO_META_DIR).resolve(GlobarParams.REPO_META_FILE_NAME);
+        Path repoMetaFile = Path.of(System.getProperty("user.dir")).resolve(GlobarParams.REPO_META_DIR).resolve(GlobarParams.REPO_META_FILE_NAME);
         repoMeta = objectMapper.readValue(repoMetaFile.toFile(), RepositoryMeta.class);
         URI uri = new URIBuilder(repoMeta.getUrl()).appendPath("fetch").build();
         HttpGet httpGet = new HttpGet(uri);

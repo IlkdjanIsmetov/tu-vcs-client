@@ -1,8 +1,6 @@
 package com.ksig.vcs_cli;
 
-import com.ksig.vcs_cli.commands.CreateRepositoryCommand;
-import com.ksig.vcs_cli.commands.LoginCommand;
-import com.ksig.vcs_cli.commands.TestCommand;
+import com.ksig.vcs_cli.commands.*;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 
@@ -12,7 +10,7 @@ import java.util.concurrent.Callable;
          mixinStandardHelpOptions = true, 
          version = "1.0",
          description = "Centralized Version Control System CLI",
-         subcommands = { LoginCommand.class, TestCommand.class, CreateRepositoryCommand.class })
+         subcommands = { LoginCommand.class, TestCommand.class, CreateRepositoryCommand.class, FetchCommand.class, StatusCommand.class, CommitCommand.class })
 public class VcsCliApplication implements Callable<Integer> {
 
     @Override
@@ -22,7 +20,12 @@ public class VcsCliApplication implements Callable<Integer> {
     }
 
     public static void main(String[] args) {
-        int exitCode = new CommandLine(new VcsCliApplication()).execute(args);
+        int exitCode = 0;
+        try {
+            exitCode = new CommandLine(new VcsCliApplication()).execute(args);
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
+        }
         System.exit(exitCode);
     }
 }
