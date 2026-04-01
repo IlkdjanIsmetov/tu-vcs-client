@@ -21,14 +21,15 @@ import org.apache.hc.core5.net.URIBuilder;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import static com.ksig.vcs_cli.globalParams.GlobarParams.APP_BASE_URL;
-
 @Command(name = "create", description = "Create repository")
 public class CreateRepositoryCommand implements Callable<Integer> {
     ObjectWriter objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
     private static final BackendRestClient backendRestClient = new BackendRestClient();
     @Option(names = {"-n", "--name"}, required = true, description = "repository name")
     private String repository;
+
+    @Option(names = {"-u", "--url"}, required = true, description = "url for the remote version control server")
+    private String serverUrl;
 
     @Option(names = {"-ra", "reqApp"}, description = "Require approval by repo master for commits")
     private boolean requireApproval;
@@ -57,7 +58,7 @@ public class CreateRepositoryCommand implements Callable<Integer> {
     }
 
     private String sendRequestToServer(RepositoryRequest repoRequest) throws Exception {
-        URI uri = new URIBuilder(APP_BASE_URL).appendPath("repositories").appendPath("create").build();
+        URI uri = new URIBuilder(serverUrl).appendPath("repositories").appendPath("create").build();
         HttpPost httpPost = new HttpPost(uri);
         httpPost.setEntity(new StringEntity(objectWriter.writeValueAsString(repoRequest)));
         httpPost.setHeader("Accept", "application/json");

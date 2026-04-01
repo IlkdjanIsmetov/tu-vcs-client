@@ -8,7 +8,6 @@ public class GlobarParams {
     //TODO CHANGE LATER!
     public static final String KEYCLOACK_CLIENT_ID = "vcs-spring-client";
     public static final String KEYCLOAK_TOKEN_URL = "http://localhost:8081/realms/vcs-realm/protocol/openid-connect/token";
-    public static final String APP_BASE_URL = "http://localhost:8080/api";
     public static final String REPO_META_DIR = ".tu_vcs_repo";
     public static final String REPO_META_FILE_NAME = "repo.json";
     public static final String ITEMS_META_FILE_NAME = "items.json";

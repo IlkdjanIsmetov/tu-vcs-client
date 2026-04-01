@@ -15,8 +15,6 @@ import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
-import static com.ksig.vcs_cli.globalParams.GlobarParams.APP_BASE_URL;
-
 @Command(name = "fetch", description = "Fetch info for latest revision")
 public class FetchCommand implements Callable<Integer> {
     private static final BackendRestClient backendRestClient = new BackendRestClient();

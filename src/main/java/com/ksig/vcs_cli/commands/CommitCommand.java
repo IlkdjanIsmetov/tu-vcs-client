@@ -7,6 +7,7 @@ import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.http.BackendRestClient;
 import com.ksig.vcs_cli.models.ItemMeta;
 import com.ksig.vcs_cli.models.ItemRequest;
+import com.ksig.vcs_cli.models.RepositoryMeta;
 import com.ksig.vcs_cli.models.enums.Action;
 import com.ksig.vcs_cli.utils.RepositoryStatus;
 
@@ -29,7 +30,6 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Callable;
 
-import static com.ksig.vcs_cli.globalParams.GlobarParams.APP_BASE_URL;
 import static com.ksig.vcs_cli.models.enums.ItemType.DIRECTORY;
 import static com.ksig.vcs_cli.models.enums.ItemType.FILE;
 
@@ -56,9 +56,8 @@ public class CommitCommand implements Callable<Integer> {
         Path repoMetaDir = statusResult.repoRoot.resolve(GlobarParams.REPO_META_DIR);
         Path repoMetaJsonPath = repoMetaDir.resolve(GlobarParams.REPO_META_FILE_NAME);
         Path itemsJsonPath = repoMetaDir.resolve(GlobarParams.ITEMS_META_FILE_NAME);
-
-        JsonNode repoMetaNode = mapper.readTree(repoMetaJsonPath.toFile());
-        UUID repositoryId = UUID.fromString(repoMetaNode.get("id").asText());
+        RepositoryMeta repoMeta = mapper.readValue(repoMetaJsonPath.toFile(), RepositoryMeta.class);
+        UUID repositoryId = repoMeta.getId();
 
         List<ItemMeta> trackedList = mapper.readValue(
                 itemsJsonPath.toFile(),
@@ -105,15 +104,15 @@ public class CommitCommand implements Callable<Integer> {
             return 0;
         }
 
-        sendCommitRequest(repositoryId, itemsToCommit, filesToUpload);
+        sendCommitRequest(repositoryId, itemsToCommit, filesToUpload, repoMeta.getUrl());
         System.out.println("Commit successful.");
-        fetchAndUpdateLocalState(repositoryId, itemsJsonPath);
+        fetchAndUpdateLocalState(repositoryId, itemsJsonPath, repoMeta.getUrl());
 
         return 0;
     }
 
-    private void sendCommitRequest(UUID repositoryId, List<ItemRequest> items, List<File> files) throws Exception {
-        URI uri = new URIBuilder(APP_BASE_URL)
+    private void sendCommitRequest(UUID repositoryId, List<ItemRequest> items, List<File> files, String url) throws Exception {
+        URI uri = new URIBuilder(url)
                 .appendPathSegments("repositories", repositoryId.toString(), "commit")
                 .setParameter("message", message)
                 .build();
@@ -133,8 +132,8 @@ public class CommitCommand implements Callable<Integer> {
         backendRestClient.executeAuthenticatedRequest(httpPost);
     }
 
-    private void fetchAndUpdateLocalState(UUID repositoryId, Path itemsJsonPath) throws Exception {
-        URI uri = new URIBuilder(APP_BASE_URL)
+    private void fetchAndUpdateLocalState(UUID repositoryId, Path itemsJsonPath, String url) throws Exception {
+        URI uri = new URIBuilder(url)
                 .appendPathSegments("repositories", repositoryId.toString(), "fetch")
                 .setParameter("repositoryId", repositoryId.toString())
                 .build();
@@ -143,12 +142,6 @@ public class CommitCommand implements Callable<Integer> {
         String response = backendRestClient.executeAuthenticatedRequest(httpGet);
 
         List<ItemMeta> fetchedItems = mapper.readValue(response, new TypeReference<List<ItemMeta>>() {});
-//        Map<String, ItemMeta> updatedState = new HashMap<>();
-
-//        for (ItemMeta item : fetchedItems) {
-//            updatedState.put(item.getPath(), item);
-//        }
-
         Files.writeString(itemsJsonPath, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(fetchedItems));
         System.out.println("Local tracking state updated.");
     }
