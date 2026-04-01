@@ -44,14 +44,8 @@ public class CommitCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        Path currentWorkDir = Path.of(System.getProperty("user.dir"));
+        RepositoryStatus.StatusResult statusResult = RepositoryStatus.analyzeWorkspace();
 
-        RepositoryStatus.StatusResult statusResult = RepositoryStatus.analyzeWorkspace(currentWorkDir);
-
-        if (statusResult == null) {
-            System.err.println("fatal: not a tu-vcs repository");
-            return 1;
-        }
 
         Path repoMetaDir = statusResult.repoRoot.resolve(GlobarParams.REPO_META_DIR);
         Path repoMetaJsonPath = repoMetaDir.resolve(GlobarParams.REPO_META_FILE_NAME);
@@ -129,7 +123,7 @@ public class CommitCommand implements Callable<Integer> {
         }
 
         httpPost.setEntity(builder.build());
-        backendRestClient.executeAuthenticatedRequest(httpPost);
+        backendRestClient.executeStringRequest(httpPost);
     }
 
     private void fetchAndUpdateLocalState(UUID repositoryId, Path itemsJsonPath, String url) throws Exception {
@@ -139,7 +133,7 @@ public class CommitCommand implements Callable<Integer> {
                 .build();
 
         HttpGet httpGet = new HttpGet(uri);
-        String response = backendRestClient.executeAuthenticatedRequest(httpGet);
+        String response = backendRestClient.executeStringRequest(httpGet);
 
         List<ItemMeta> fetchedItems = mapper.readValue(response, new TypeReference<List<ItemMeta>>() {});
         Files.writeString(itemsJsonPath, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(fetchedItems));

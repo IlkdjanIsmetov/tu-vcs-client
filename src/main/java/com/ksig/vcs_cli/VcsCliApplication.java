@@ -10,7 +10,7 @@ import java.util.concurrent.Callable;
          mixinStandardHelpOptions = true, 
          version = "1.0",
          description = "Centralized Version Control System CLI",
-         subcommands = { LoginCommand.class, CreateRepositoryCommand.class, FetchCommand.class, StatusCommand.class, CommitCommand.class })
+         subcommands = { LoginCommand.class, CreateRepositoryCommand.class, FetchCommand.class, StatusCommand.class, CommitCommand.class, CloneCommand.class, })
 public class VcsCliApplication implements Callable<Integer> {
 
     @Override

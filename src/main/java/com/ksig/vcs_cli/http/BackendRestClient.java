@@ -9,6 +9,11 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+
 public class BackendRestClient {
 
     private final TokenStorageModule tokenStorage;
@@ -19,7 +24,35 @@ public class BackendRestClient {
         this.keycloakClient = new KeycloakClient();
     }
 
-    public String executeAuthenticatedRequest(HttpUriRequestBase request) {
+    public String executeStringRequest(HttpUriRequestBase request) throws Exception {
+        try (CloseableHttpResponse response = executeAuthenticatedRequest(request)){
+            String body = EntityUtils.toString(response.getEntity());
+            if (response.getCode() >= 200 && response.getCode() < 300) {
+                return body;
+            } else {
+                throw new RuntimeException("Server returned status " + response.getCode() + ": " + body);
+            }
+        }
+    }
+
+    public Path downloadFile(HttpUriRequestBase request, Path downloadPath) throws Exception {
+        try (CloseableHttpResponse response = executeAuthenticatedRequest(request)){
+            if (response.getCode() >= 200 && response.getCode() < 300) {
+                String dispositionHeader = response.getHeader("Content-Disposition").getValue();
+                String fileName = dispositionHeader.replaceFirst("(?i)^.*filename=\"([^\"]+)\".*$", "$1");
+                downloadPath = downloadPath.resolve(fileName);
+                if (Files.exists(downloadPath)) {
+                    throw new RuntimeException("File " + fileName + " already exists");
+                }
+                Files.copy(response.getEntity().getContent(), downloadPath, StandardCopyOption.REPLACE_EXISTING);
+                return downloadPath;
+            } else  {
+                throw new RuntimeException("Server returned status " + response.getCode() + ": " + response.getEntity());
+            }
+        }
+    }
+
+    private CloseableHttpResponse executeAuthenticatedRequest(HttpUriRequestBase request) {
         String accessToken = tokenStorage.getAccessToken();
 
         if (accessToken == null) {
@@ -29,41 +62,26 @@ public class BackendRestClient {
         request.setHeader("Authorization", "Bearer " + accessToken);
 
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            
-            try (CloseableHttpResponse response = httpClient.execute(request)) {
-                
-                if (response.getCode() == 401) {
-                    System.out.println("Session expired. Attempting to refresh token...");
-                    String refreshToken = tokenStorage.getRefreshToken();
-                    
-                    boolean refreshed = keycloakClient.refreshAccessToken(refreshToken);
-                    
-                    if (refreshed) {
-                        String newAccessToken = tokenStorage.getAccessToken();
-                        request.setHeader("Authorization", "Bearer " + newAccessToken);
-                        
-                        try (CloseableHttpResponse retryResponse = httpClient.execute(request)) {
-                            return handleResponse(retryResponse);
-                        }
-                    } else {
-                        throw new IllegalStateException("Session permanently expired. Please run 'vcs login' again.");
-                    }
+
+            CloseableHttpResponse response = httpClient.execute(request);
+            if (response.getCode() == 401) {
+                System.out.println("Session expired. Attempting to refresh token...");
+                String refreshToken = tokenStorage.getRefreshToken();
+
+                boolean refreshed = keycloakClient.refreshAccessToken(refreshToken);
+
+                if (refreshed) {
+                    String newAccessToken = tokenStorage.getAccessToken();
+                    request.setHeader("Authorization", "Bearer " + newAccessToken);
+
+                    return response;
+                } else {
+                    throw new IllegalStateException("Session permanently expired. Please run 'vcs login' again.");
                 }
-                
-                return handleResponse(response);
             }
-            
+            return response;
         } catch (Exception e) {
             throw new RuntimeException("API Request failed: " + e.getMessage(), e);
-        }
-    }
-
-    private String handleResponse(CloseableHttpResponse response) throws Exception {
-        String body = EntityUtils.toString(response.getEntity());
-        if (response.getCode() >= 200 && response.getCode() < 300) {
-            return body;
-        } else {
-            throw new RuntimeException("Server returned status " + response.getCode() + ": " + body);
         }
     }
 }

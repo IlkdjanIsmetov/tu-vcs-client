@@ -31,11 +31,8 @@ public class RepositoryStatus {
         }
     }
 
-    public static StatusResult analyzeWorkspace(Path currentWorkDir) throws IOException {
-        Path repoRoot = findRepositoryRoot(currentWorkDir);
-        if (repoRoot == null) {
-            return null; 
-        }
+    public static StatusResult analyzeWorkspace() throws IOException {
+        Path repoRoot = findRepositoryRoot();
 
         StatusResult result = new StatusResult(repoRoot);
         Path repoMetaDir = repoRoot.resolve(GlobarParams.REPO_META_DIR);
@@ -89,8 +86,8 @@ public class RepositoryStatus {
         return result;
     }
 
-    public static Path findRepositoryRoot(Path currentPath) {
-        Path checkPath = currentPath.toAbsolutePath().normalize();
+    public static Path findRepositoryRoot() {
+        Path checkPath = Path.of(System.getProperty("user.dir"));
         while (checkPath != null) {
             Path potentialRepoMeta = checkPath.resolve(GlobarParams.REPO_META_DIR);
             if (Files.isDirectory(potentialRepoMeta)) {
@@ -98,7 +95,7 @@ public class RepositoryStatus {
             }
             checkPath = checkPath.getParent();
         }
-        return null;
+        throw new RuntimeException("This is not a tu-vcs repository!");
     }
 
     public static String calculateChecksum(Path file) {

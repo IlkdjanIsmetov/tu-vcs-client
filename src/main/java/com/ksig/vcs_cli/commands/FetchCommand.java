@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.http.BackendRestClient;
 import com.ksig.vcs_cli.models.RepositoryMeta;
+import com.ksig.vcs_cli.utils.RepositoryStatus;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.core5.net.URIBuilder;
 import picocli.CommandLine;
@@ -22,13 +23,14 @@ public class FetchCommand implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         RepositoryMeta repoMeta = null;
-        Path repoMetaFile = Path.of(System.getProperty("user.dir")).resolve(GlobarParams.REPO_META_DIR).resolve(GlobarParams.REPO_META_FILE_NAME);
+        Path repoRoot = RepositoryStatus.findRepositoryRoot();
+        Path repoMetaFile = repoRoot.resolve(GlobarParams.REPO_META_DIR).resolve(GlobarParams.REPO_META_FILE_NAME);
         repoMeta = objectMapper.readValue(repoMetaFile.toFile(), RepositoryMeta.class);
         URI uri = new URIBuilder(repoMeta.getUrl()).appendPath("fetch").build();
         HttpGet httpGet = new HttpGet(uri);
         httpGet.setHeader("Accept", "application/json");
         httpGet.setHeader("Content-Type", "application/json");
-        String response = backendRestClient.executeAuthenticatedRequest(httpGet);
+        String response = backendRestClient.executeStringRequest(httpGet);
         Path itemMeta = Path.of(GlobarParams.REPO_META_DIR).resolve(GlobarParams.ITEMS_META_FILE_NAME);
         Files.write(itemMeta, response.getBytes());
         return 0;

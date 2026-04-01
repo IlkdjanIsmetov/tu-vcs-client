@@ -63,7 +63,7 @@ public class CreateRepositoryCommand implements Callable<Integer> {
         httpPost.setEntity(new StringEntity(objectWriter.writeValueAsString(repoRequest)));
         httpPost.setHeader("Accept", "application/json");
         httpPost.setHeader("Content-type", "application/json");
-        return backendRestClient.executeAuthenticatedRequest(httpPost);
+        return backendRestClient.executeStringRequest(httpPost);
     }
 
     private void createMetaDir(String response) throws IOException {

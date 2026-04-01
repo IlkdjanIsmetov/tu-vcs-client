@@ -15,15 +15,8 @@ public class StatusCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        Path currentWorkDir = Path.of(System.getProperty("user.dir"));
-
         try {
-            RepositoryStatus.StatusResult result = RepositoryStatus.analyzeWorkspace(currentWorkDir);
-
-            if (result == null) {
-                System.err.println("This is not a tu-vcs repository!: " + GlobarParams.REPO_META_DIR);
-                return 1;
-            }
+            RepositoryStatus.StatusResult result = RepositoryStatus.analyzeWorkspace();
 
             printStatus(
                     new ArrayList<>(result.added.keySet()),
