@@ -30,6 +30,7 @@ public class CloneCommand implements Callable<Integer> {
         Path downloadedFile = backendRestClient.downloadFile(httpGet, Path.of(System.getProperty("user.dir")));
         Path unzipDir = Path.of(downloadedFile.toFile().getAbsolutePath().replaceAll(".zip", ""));
         extractZip(downloadedFile, unzipDir);
+        Files.deleteIfExists(downloadedFile);
         return 0;
     }
 
