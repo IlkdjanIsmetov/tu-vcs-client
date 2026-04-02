@@ -22,10 +22,7 @@ public class FetchCommand implements Callable<Integer> {
     private final ObjectMapper objectMapper = new ObjectMapper();
     @Override
     public Integer call() throws Exception {
-        RepositoryMeta repoMeta = null;
-        Path repoRoot = RepositoryStatus.findRepositoryRoot();
-        Path repoMetaFile = repoRoot.resolve(GlobarParams.REPO_META_DIR).resolve(GlobarParams.REPO_META_FILE_NAME);
-        repoMeta = objectMapper.readValue(repoMetaFile.toFile(), RepositoryMeta.class);
+        RepositoryMeta repoMeta = RepositoryStatus.getRepositoryMeta();
         URI uri = new URIBuilder(repoMeta.getUrl()).appendPath("fetch").build();
         HttpGet httpGet = new HttpGet(uri);
         httpGet.setHeader("Accept", "application/json");

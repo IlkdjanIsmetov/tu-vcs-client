@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.models.ItemMeta;
+import com.ksig.vcs_cli.models.RepositoryMeta;
 import com.ksig.vcs_cli.models.enums.ItemType;
 
 import java.io.IOException;
@@ -96,6 +97,12 @@ public class RepositoryStatus {
             checkPath = checkPath.getParent();
         }
         throw new RuntimeException("This is not a tu-vcs repository!");
+    }
+
+    public static RepositoryMeta getRepositoryMeta() throws IOException {
+        Path repoRoot = findRepositoryRoot();
+        Path repoMetaFile = repoRoot.resolve(GlobarParams.REPO_META_DIR).resolve(GlobarParams.REPO_META_FILE_NAME);
+        return mapper.readValue(repoMetaFile.toFile(), RepositoryMeta.class);
     }
 
     public static String calculateChecksum(Path file) {

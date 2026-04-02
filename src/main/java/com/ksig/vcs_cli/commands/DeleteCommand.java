@@ -1,0 +1,41 @@
+package com.ksig.vcs_cli.commands;
+
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.concurrent.Callable;
+
+import com.ksig.vcs_cli.globalParams.GlobarParams;
+import com.ksig.vcs_cli.http.BackendRestClient;
+import com.ksig.vcs_cli.models.RepositoryMeta;
+import com.ksig.vcs_cli.utils.RepositoryStatus;
+import org.apache.hc.client5.http.classic.methods.HttpDelete;
+import org.apache.hc.core5.net.URIBuilder;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+
+@Command(name = "delete", description = "Delete this repository")
+public class DeleteCommand implements Callable<Integer> {
+    @Override
+    public Integer call() throws Exception {
+        System.out.println("Are you sure you want to delete this repository?");
+        String yesNo = System.console().readLine("Y/N: ");
+        if (yesNo.equalsIgnoreCase("N")) {
+            return 0;
+        }
+        RepositoryMeta repoMeta = RepositoryStatus.getRepositoryMeta();
+        URI uri = new URIBuilder(repoMeta.getUrl())
+                .appendPath("delete")
+                .build();
+        HttpDelete httpDelete = new HttpDelete(uri);
+        httpDelete.setHeader("Accept", "application/json");
+        httpDelete.setHeader("Content-Type", "application/json");
+        BackendRestClient backendRestClient = new BackendRestClient();
+        backendRestClient.executeStringRequest(httpDelete);
+        Path root = RepositoryStatus.findRepositoryRoot();
+        Path repoMetaDIr = root.resolve(GlobarParams.REPO_META_DIR);
+        Files.deleteIfExists(repoMetaDIr);
+        System.out.println("This repository is no longer a tu-vcs repository and has been deleted remotely.");
+        return 0;
+    }
+}
