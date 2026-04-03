@@ -23,6 +23,10 @@ public class DeleteCommand implements Callable<Integer> {
         if (yesNo.equalsIgnoreCase("N")) {
             return 0;
         }
+        if (!yesNo.equalsIgnoreCase("Y")) {
+            System.err.println("Please enter yes or no");
+            return 1;
+        }
         RepositoryMeta repoMeta = RepositoryStatus.getRepositoryMeta();
         URI uri = new URIBuilder(repoMeta.getUrl())
                 .appendPath("delete")
