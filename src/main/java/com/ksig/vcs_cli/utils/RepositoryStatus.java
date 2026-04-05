@@ -2,6 +2,7 @@ package com.ksig.vcs_cli.utils;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ksig.vcs_cli.exceptions.NotARepoException;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.models.ItemMeta;
 import com.ksig.vcs_cli.models.RepositoryMeta;
@@ -26,16 +27,17 @@ public class RepositoryStatus {
         public final Map<String, Path> added = new HashMap<>();
         public final Map<String, Path> modified = new HashMap<>();
         public final Map<String, ItemMeta> deleted = new HashMap<>();
-
-        public StatusResult(Path repoRoot) {
+        public final long revision;
+        public StatusResult(Path repoRoot, long revision) {
             this.repoRoot = repoRoot;
+            this.revision = revision;
         }
     }
 
-    public static StatusResult analyzeWorkspace() throws IOException {
+    public static StatusResult analyzeWorkspace() throws IOException, NotARepoException {
         Path repoRoot = findRepositoryRoot();
-
-        StatusResult result = new StatusResult(repoRoot);
+        RepositoryMeta repoMeta = getRepositoryMeta();
+        StatusResult result = new StatusResult(repoRoot, repoMeta.getRevision());
         Path repoMetaDir = repoRoot.resolve(GlobarParams.REPO_META_DIR);
         Path itemsJsonPath = repoMetaDir.resolve(GlobarParams.ITEMS_META_FILE_NAME);
 
@@ -87,7 +89,7 @@ public class RepositoryStatus {
         return result;
     }
 
-    public static Path findRepositoryRoot() {
+    public static Path findRepositoryRoot() throws NotARepoException {
         Path checkPath = Path.of(System.getProperty("user.dir"));
         while (checkPath != null) {
             Path potentialRepoMeta = checkPath.resolve(GlobarParams.REPO_META_DIR);
@@ -96,10 +98,10 @@ public class RepositoryStatus {
             }
             checkPath = checkPath.getParent();
         }
-        throw new RuntimeException("This is not a tu-vcs repository!");
+        throw new NotARepoException();
     }
 
-    public static RepositoryMeta getRepositoryMeta() throws IOException {
+    public static RepositoryMeta getRepositoryMeta() throws IOException, NotARepoException {
         Path repoRoot = findRepositoryRoot();
         Path repoMetaFile = repoRoot.resolve(GlobarParams.REPO_META_DIR).resolve(GlobarParams.REPO_META_FILE_NAME);
         return mapper.readValue(repoMetaFile.toFile(), RepositoryMeta.class);

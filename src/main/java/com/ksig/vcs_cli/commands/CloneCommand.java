@@ -3,6 +3,7 @@ package com.ksig.vcs_cli.commands;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -22,15 +23,35 @@ public class CloneCommand implements Callable<Integer> {
     private String url;
 
     @Override
-    public Integer call() throws Exception {
-        URI uri = new URI(url);
+    public Integer call() {
+        System.out.println("Cloning remote repository...");
+        URI uri = null;
+        try {
+            uri = new URI(url);
+        } catch (URISyntaxException e) {
+            System.err.println("Invalid url: " + url);
+            return 1;
+        }
         HttpGet httpGet = new HttpGet(uri);
         httpGet.setHeader("Accept", "application/octet-stream");
         BackendRestClient  backendRestClient = new BackendRestClient();
-        Path downloadedFile = backendRestClient.downloadFile(httpGet, Path.of(System.getProperty("user.dir")));
+        Path downloadedFile;
+        try {
+            downloadedFile = backendRestClient.downloadFile(httpGet, Path.of(System.getProperty("user.dir")));
+        } catch (Exception e) {
+            System.err.println("Failed to clone remote repository!");
+            System.err.println(e.getMessage());
+            return 1;
+        }
         Path unzipDir = Path.of(downloadedFile.toFile().getAbsolutePath().replaceAll(".zip", ""));
-        extractZip(downloadedFile, unzipDir);
-        Files.deleteIfExists(downloadedFile);
+        try {
+            extractZip(downloadedFile, unzipDir);
+            Files.deleteIfExists(downloadedFile);
+        } catch (IOException e) {
+            System.err.println("Failed to download remote repository!");
+            return 1;
+        }
+        System.out.println("Cloned remote repository successfully!");
         return 0;
     }
 

@@ -1,5 +1,6 @@
 package com.ksig.vcs_cli.commands;
 
+import com.ksig.vcs_cli.exceptions.NotARepoException;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.http.BackendRestClient;
 import com.ksig.vcs_cli.models.RepositoryMeta;
@@ -9,7 +10,9 @@ import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.core5.net.URIBuilder;
 import picocli.CommandLine;
 
+import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
@@ -25,8 +28,16 @@ public class AddMemberCommand implements Callable<Integer> {
     private String roleString;
 
     @Override
-    public Integer call() throws Exception {
-        RepositoryMeta repoMeta = RepositoryStatus.getRepositoryMeta();
+    public Integer call()  {
+        RepositoryMeta repoMeta = null;
+        try {
+            repoMeta = RepositoryStatus.getRepositoryMeta();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (NotARepoException e) {
+            System.err.println(e.getMessage());
+            return 1;
+        }
         Role role = null;
         try {
             role = Role.valueOf(roleString.toUpperCase());
@@ -34,16 +45,28 @@ public class AddMemberCommand implements Callable<Integer> {
             System.err.println("Invalid role: " + roleString);
             return 1;
         }
-        URI uri = new URIBuilder(repoMeta.getUrl())
-                .appendPath("addMember")
-                .setParameter("username", username)
-                .setParameter("role", role.toString())
-                .build();
+        URI uri = null;
+        try {
+            uri = new URIBuilder(repoMeta.getUrl())
+                    .appendPath("addMember")
+                    .setParameter("username", username)
+                    .setParameter("role", role.toString())
+                    .build();
+        } catch (URISyntaxException e) {
+            System.err.println("Invalid url: " + repoMeta.getUrl());
+            System.err.println(".tu_vcs_repo/repo.json has probably invalid URL");
+            return 1;
+        }
         HttpPost httpPost = new HttpPost(uri);
         httpPost.setHeader("Accept", "application/json");
         httpPost.setHeader("Content-Type", "application/json");
         BackendRestClient  backendRestClient = new BackendRestClient();
-        backendRestClient.executeStringRequest(httpPost);
+        try {
+            backendRestClient.executeStringRequest(httpPost);
+        } catch (Exception e) {
+            System.err.println("Failed to add member to repository!");
+            return 1;
+        }
         return 0;
     }
 }

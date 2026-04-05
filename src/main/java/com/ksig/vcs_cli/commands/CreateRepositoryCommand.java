@@ -35,14 +35,22 @@ public class CreateRepositoryCommand implements Callable<Integer> {
     private boolean requireApproval;
 
     @Override
-    public Integer call() throws Exception {
+    public Integer call() {
         RepositoryRequest repoRequest = createRequestModel();
-        String response = sendRequestToServer(repoRequest);
+        String response = null;
+        try {
+            response = sendRequestToServer(repoRequest);
+        } catch (Exception e) {
+            System.err.println("Failed to send repository request!");
+            return 1;
+        }
         try {
             createMetaDir(response);
         } catch (FileAlreadyExistsException e) {
             System.err.println("This is already an tu-vcs repository");
             return 1;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
         System.out.println("Repository created!");
         return 0;

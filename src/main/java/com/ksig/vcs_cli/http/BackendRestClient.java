@@ -1,14 +1,14 @@
 package com.ksig.vcs_cli.http;
 
-
 import com.ksig.vcs_cli.auth.KeycloakClient;
 import com.ksig.vcs_cli.auth.TokenStorageModule;
+import com.ksig.vcs_cli.exceptions.NotLoggedInException;
+import com.ksig.vcs_cli.exceptions.SessionExpiredException;
 import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
-
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,14 +18,16 @@ public class BackendRestClient {
 
     private final TokenStorageModule tokenStorage;
     private final KeycloakClient keycloakClient;
+    private final CloseableHttpClient httpClient;
 
     public BackendRestClient() {
         this.tokenStorage = new TokenStorageModule();
         this.keycloakClient = new KeycloakClient();
+        this.httpClient = HttpClients.createDefault();
     }
 
     public String executeStringRequest(HttpUriRequestBase request) throws Exception {
-        try (CloseableHttpResponse response = executeAuthenticatedRequest(request)){
+        try (CloseableHttpResponse response = executeAuthenticatedRequest(request)) {
             String body = EntityUtils.toString(response.getEntity());
             if (response.getCode() >= 200 && response.getCode() < 300) {
                 return body;
@@ -36,7 +38,7 @@ public class BackendRestClient {
     }
 
     public Path downloadFile(HttpUriRequestBase request, Path downloadPath) throws Exception {
-        try (CloseableHttpResponse response = executeAuthenticatedRequest(request)){
+        try (CloseableHttpResponse response = executeAuthenticatedRequest(request)) {
             if (response.getCode() >= 200 && response.getCode() < 300) {
                 String dispositionHeader = response.getHeader("Content-Disposition").getValue();
                 String fileName = dispositionHeader.replaceFirst("(?i)^.*filename=\"([^\"]+)\".*$", "$1");
@@ -46,7 +48,7 @@ public class BackendRestClient {
                 }
                 Files.copy(response.getEntity().getContent(), downloadPath, StandardCopyOption.REPLACE_EXISTING);
                 return downloadPath;
-            } else  {
+            } else {
                 throw new RuntimeException("Server returned status " + response.getCode() + ": " + response.getEntity());
             }
         }
@@ -56,32 +58,35 @@ public class BackendRestClient {
         String accessToken = tokenStorage.getAccessToken();
 
         if (accessToken == null) {
-            throw new IllegalStateException("Not logged in. Please run 'vcs login' first.");
+            throw new NotLoggedInException();
         }
 
         request.setHeader("Authorization", "Bearer " + accessToken);
 
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-
+        try {
             CloseableHttpResponse response = httpClient.execute(request);
+
             if (response.getCode() == 401) {
                 System.out.println("Session expired. Attempting to refresh token...");
-                String refreshToken = tokenStorage.getRefreshToken();
+                response.close();
 
+                String refreshToken = tokenStorage.getRefreshToken();
                 boolean refreshed = keycloakClient.refreshAccessToken(refreshToken);
 
                 if (refreshed) {
                     String newAccessToken = tokenStorage.getAccessToken();
                     request.setHeader("Authorization", "Bearer " + newAccessToken);
 
-                    return response;
+                    return httpClient.execute(request);
                 } else {
-                    throw new IllegalStateException("Session permanently expired. Please run 'vcs login' again.");
+                    throw new SessionExpiredException();
                 }
             }
             return response;
+        } catch (SessionExpiredException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("API Request failed: " + e.getMessage(), e);
+            throw new RuntimeException("API Request failed: " + e.getMessage());
         }
     }
 }

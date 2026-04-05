@@ -1,5 +1,6 @@
 package com.ksig.vcs_cli.commands;
 
+import com.ksig.vcs_cli.exceptions.NotARepoException;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.utils.RepositoryStatus;
 import picocli.CommandLine.Command;
@@ -16,12 +17,19 @@ public class StatusCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         try {
-            RepositoryStatus.StatusResult result = RepositoryStatus.analyzeWorkspace();
+            RepositoryStatus.StatusResult result = null;
+            try {
+                result = RepositoryStatus.analyzeWorkspace();
+            } catch (NotARepoException e) {
+                System.err.println(e.getMessage());
+                return 1;
+            }
 
             printStatus(
                     new ArrayList<>(result.added.keySet()),
                     new ArrayList<>(result.modified.keySet()),
-                    new ArrayList<>(result.deleted.keySet())
+                    new ArrayList<>(result.deleted.keySet()),
+                    result.revision
             );
 
             return 0;
@@ -32,7 +40,8 @@ public class StatusCommand implements Callable<Integer> {
         }
     }
 
-    private void printStatus(List<String> added, List<String> modified, List<String> deleted) {
+    private void printStatus(List<String> added, List<String> modified, List<String> deleted, long revision) {
+        System.out.println("On revision: " + revision);
         if (added.isEmpty() && modified.isEmpty() && deleted.isEmpty()) {
             System.out.println("Nothing to commit, working tree clean.");
             return;
@@ -42,21 +51,18 @@ public class StatusCommand implements Callable<Integer> {
             for (String item : added) {
                 System.out.println("ADDED: " + item);
             }
-            System.out.println();
         }
 
         if (!modified.isEmpty()) {
             for (String item : modified) {
                 System.out.println("MODIFIED: " + item);
             }
-            System.out.println();
         }
 
         if (!deleted.isEmpty()) {
             for (String item : deleted) {
                 System.out.println("DELETED: " + item);
             }
-            System.out.println();
         }
     }
 }

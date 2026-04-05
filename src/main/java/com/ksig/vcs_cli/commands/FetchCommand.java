@@ -1,15 +1,18 @@
 package com.ksig.vcs_cli.commands;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+
+import com.ksig.vcs_cli.exceptions.NotARepoException;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.http.BackendRestClient;
 import com.ksig.vcs_cli.models.RepositoryMeta;
 import com.ksig.vcs_cli.utils.RepositoryStatus;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.core5.net.URIBuilder;
-import picocli.CommandLine;
 
+
+import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.Callable;
@@ -19,17 +22,43 @@ import picocli.CommandLine.Option;
 @Command(name = "fetch", description = "Fetch info for latest revision")
 public class FetchCommand implements Callable<Integer> {
     private static final BackendRestClient backendRestClient = new BackendRestClient();
-    private final ObjectMapper objectMapper = new ObjectMapper();
     @Override
-    public Integer call() throws Exception {
-        RepositoryMeta repoMeta = RepositoryStatus.getRepositoryMeta();
-        URI uri = new URIBuilder(repoMeta.getUrl()).appendPath("fetch").build();
+    public Integer call() {
+        RepositoryMeta repoMeta = null;
+        try {
+            repoMeta = RepositoryStatus.getRepositoryMeta();
+        } catch (IOException e) {
+            System.err.println("Failed to retrieve repository meta");
+            return 1;
+        } catch (NotARepoException e) {
+            System.err.println(e.getMessage());
+            return 1;
+        }
+        URI uri = null;
+        try {
+            uri = new URIBuilder(repoMeta.getUrl()).appendPath("fetch").build();
+        } catch (URISyntaxException e) {
+            System.err.println("tu_vcs_repo/repo.json url is invalid");
+            return 1;
+        }
         HttpGet httpGet = new HttpGet(uri);
         httpGet.setHeader("Accept", "application/json");
         httpGet.setHeader("Content-Type", "application/json");
-        String response = backendRestClient.executeStringRequest(httpGet);
+        String response = null;
+        try {
+            response = backendRestClient.executeStringRequest(httpGet);
+        } catch (Exception e) {
+            System.err.println("Failed to fetch items from repository!");
+            System.err.println(e.getMessage());
+            return 1;
+        }
         Path itemMeta = Path.of(GlobarParams.REPO_META_DIR).resolve(GlobarParams.ITEMS_META_FILE_NAME);
-        Files.write(itemMeta, response.getBytes());
+        try {
+            Files.write(itemMeta, response.getBytes());
+        } catch (IOException e) {
+            System.err.println("Failed to write items to repository meta!");
+            return 1;
+        }
         return 0;
     }
 }

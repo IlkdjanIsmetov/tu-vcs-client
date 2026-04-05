@@ -9,6 +9,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.concurrent.Callable;
 
 @Command(name = "kickMember", description = "Kick member from this repository")
@@ -27,7 +28,12 @@ public class KickMemberCommand implements Callable<Integer> {
         httpDelete.setHeader("Accept", "application/json");
         httpDelete.setHeader("Content-Type", "application/json");
         BackendRestClient backendRestClient = new BackendRestClient();
-        backendRestClient.executeStringRequest(httpDelete);
+        try {
+            backendRestClient.executeStringRequest(httpDelete);
+        } catch (Exception e) {
+            System.err.println("Failed to kick member from this repository!");
+            return 1;
+        }
         return 0;
     }
 }
