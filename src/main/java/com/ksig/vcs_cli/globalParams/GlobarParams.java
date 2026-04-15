@@ -11,6 +11,7 @@ public class GlobarParams {
     public static final String REPO_META_DIR = ".tu_vcs_repo";
     public static final String REPO_META_FILE_NAME = "repo.json";
     public static final String ITEMS_META_FILE_NAME = "items.json";
+    public static final String BASE_URL = "http://localhost:8080";
 
 //    static {
 //        Properties configuration = new Properties();

@@ -20,7 +20,7 @@ import java.util.stream.Stream;
 
 public class RepositoryStatus {
 
-    private static final ObjectMapper mapper = new ObjectMapper();
+    public static final ObjectMapper mapper = new ObjectMapper();
 
     public static class StatusResult {
         public final Path repoRoot;

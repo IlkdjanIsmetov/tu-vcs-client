@@ -24,7 +24,7 @@ import picocli.CommandLine.Option;
 @Command(name = "create", description = "Create repository")
 public class CreateRepositoryCommand implements Callable<Integer> {
     ObjectWriter objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
-    private static final BackendRestClient backendRestClient = new BackendRestClient();
+    static final BackendRestClient backendRestClient = new BackendRestClient();
     @Option(names = {"-n", "--name"}, required = true, description = "repository name")
     private String repository;
 
