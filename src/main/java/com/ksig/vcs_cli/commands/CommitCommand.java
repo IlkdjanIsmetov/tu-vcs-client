@@ -131,7 +131,7 @@ public class CommitCommand implements Callable<Integer> {
         if (response.equals("OK")) {
             System.out.println("Commit successful.");
             try {
-                fetchAndUpdateLocalState(repositoryId, itemsJsonPath, repoMeta.getUrl());
+                fetchAndUpdateLocalState(repositoryId, itemsJsonPath, repoMeta, repoMetaJsonPath);
             } catch (Exception e) {
                 System.err.println("Failed to fetch and update local state! Run tu-vcs fetch!");
             }
@@ -163,8 +163,8 @@ public class CommitCommand implements Callable<Integer> {
         return backendRestClient.executeStringRequest(httpPost);
     }
 
-    private void fetchAndUpdateLocalState(UUID repositoryId, Path itemsJsonPath, String url) throws Exception {
-        URI uri = new URIBuilder(url)
+    private void fetchAndUpdateLocalState(UUID repositoryId, Path itemsJsonPath, RepositoryMeta repoMeta, Path repoMetaJsonPath) throws Exception {
+        URI uri = new URIBuilder(repoMeta.getUrl())
                 .appendPath("fetch")
                 .setParameter("repositoryId", repositoryId.toString())
                 .build();
@@ -180,6 +180,13 @@ public class CommitCommand implements Callable<Integer> {
             return;
         }
         Files.writeString(itemsJsonPath, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(fetchedItems));
+        //вземам най-големия revision, тест сегашния
+        long currentRevision = fetchedItems.stream()
+                .mapToLong(ItemMeta::getRevisionNumber)
+                .max()
+                .orElse(0);
+        repoMeta.setRevision(currentRevision);
+        Files.writeString(repoMetaJsonPath, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(repoMeta));
         System.out.println("Local tracking state updated.");
     }
 
