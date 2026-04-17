@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ksig.vcs_cli.exceptions.NotARepoException;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.http.BackendRestClient;
+import com.ksig.vcs_cli.models.CreateCRView;
 import com.ksig.vcs_cli.models.ItemMeta;
 import com.ksig.vcs_cli.models.ItemRequest;
 import com.ksig.vcs_cli.models.RepositoryMeta;
@@ -26,6 +27,7 @@ import picocli.CommandLine.Option;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -42,6 +44,11 @@ public class CommitCommand implements Callable<Integer> {
 
     @Option(names = {"-m", "--message"}, required = true, description = "Commit message")
     private String message;
+
+    @Option(names = {"-cr", "--changeRequest"}, required = false, description = "This will create a change request")
+    private boolean isChangeRequest;
+
+    private String changeRequestTitle;
 
     @Override
     public Integer call() {
@@ -67,7 +74,18 @@ public class CommitCommand implements Callable<Integer> {
             System.err.println("Failed to read repository meta!");
             return 1;
         }
-        UUID repositoryId = repoMeta.getId();
+        long lastRevisionNumber;
+        try {
+            lastRevisionNumber = getLatestRevNumber(repoMeta);
+        } catch (Exception e) {
+            System.err.println("Failed to read last revision number!");
+            return 1;
+        }
+
+        if (lastRevisionNumber != repoMeta.getRevision()) {
+            System.err.println("Your local repo is behind remote repository! Perform pull command!");
+            return 1;
+        }
 
         List<ItemMeta> trackedList = null;
         try {
@@ -120,9 +138,50 @@ public class CommitCommand implements Callable<Integer> {
             return 0;
         }
 
+        if (repoMeta.isRequireApproval()) {
+            changeRequestTitle = System.console().readLine("Change request title: ");
+            return doChangeRequest(itemsToCommit, filesToUpload, repoMeta, itemsJsonPath, repoMetaJsonPath);
+        } else if (isChangeRequest) {
+            changeRequestTitle = System.console().readLine("Change request title: ");
+            return doChangeRequest(itemsToCommit, filesToUpload, repoMeta, itemsJsonPath, repoMetaJsonPath);
+        } else {
+            return commitDirectly(itemsToCommit, filesToUpload, repoMeta, itemsJsonPath, repoMetaJsonPath);
+        }
+
+    }
+
+
+    private int doChangeRequest(List<ItemRequest> itemsToCommit, List<File> filesToUpload, RepositoryMeta repoMeta, Path itemsJsonPath, Path repoMetaJsonPath) {
+        CreateCRView req = new CreateCRView();
+        req.setTittle(changeRequestTitle);
+        req.setDescription(message);
+        req.setBaseRevisionNUmber(repoMeta.getRevision());
+        String changeRequestId;
+        try {
+            changeRequestId = createChangeRequest(repoMeta);
+        } catch (Exception e) {
+            System.err.println("Failed to create change request!");
+            return 1;
+        }
+        try {
+            addItemsToChangeRequest(itemsToCommit, filesToUpload, repoMeta.getUrl(), changeRequestId);
+        } catch (Exception e) {
+            System.err.println("Failed to add items to change request!");
+            return 1;
+        }
+        return 0;
+    }
+
+    private String createChangeRequest(RepositoryMeta repoMeta) throws Exception {
+        URI uri = new URIBuilder(repoMeta.getUrl()).appendPath("change-request").build();
+        HttpPost httpPost = new HttpPost(uri);
+        return backendRestClient.executeStringRequest(httpPost);
+    }
+
+    private int commitDirectly(List<ItemRequest> itemsToCommit, List<File> filesToUpload, RepositoryMeta repoMeta, Path itemsJsonPath, Path repoMetaJsonPath) {
         String response = null;
         try {
-            response = sendCommitRequest(repositoryId, itemsToCommit, filesToUpload, repoMeta.getUrl());
+            response = sendCommitRequest(itemsToCommit, filesToUpload, repoMeta.getUrl());
         } catch (Exception e) {
             System.err.println("Failed to send commit request!");
             System.out.println(e + e.getMessage());
@@ -131,7 +190,7 @@ public class CommitCommand implements Callable<Integer> {
         if (response.equals("OK")) {
             System.out.println("Commit successful.");
             try {
-                fetchAndUpdateLocalState(repositoryId, itemsJsonPath, repoMeta, repoMetaJsonPath);
+                fetchAndUpdateLocalState(itemsJsonPath, repoMeta, repoMetaJsonPath);
             } catch (Exception e) {
                 System.err.println("Failed to fetch and update local state! Run tu-vcs fetch!");
             }
@@ -142,7 +201,13 @@ public class CommitCommand implements Callable<Integer> {
         return 0;
     }
 
-    private String sendCommitRequest(UUID repositoryId, List<ItemRequest> items, List<File> files, String url) throws Exception {
+    private long getLatestRevNumber(RepositoryMeta repoMeta) throws Exception {
+        URI uri = new URIBuilder(repoMeta.getUrl()).appendPath("latestRevNumber").build();
+        HttpGet httpGet = new HttpGet(uri);
+        return Long.parseLong(backendRestClient.executeStringRequest(httpGet));
+    }
+
+    private String sendCommitRequest(List<ItemRequest> items, List<File> files, String url) throws Exception {
         URI uri = new URIBuilder(url)
                 .appendPath("commit")
                 .setParameter("message", message)
@@ -163,10 +228,24 @@ public class CommitCommand implements Callable<Integer> {
         return backendRestClient.executeStringRequest(httpPost);
     }
 
-    private void fetchAndUpdateLocalState(UUID repositoryId, Path itemsJsonPath, RepositoryMeta repoMeta, Path repoMetaJsonPath) throws Exception {
+    private String addItemsToChangeRequest(List<ItemRequest> items, List<File> files, String url, String crID) throws Exception {
+        URI uri = new URIBuilder(url).appendPath("change-request").appendPath(crID).appendPath("items").build();
+        HttpPost httpPost = new HttpPost(uri);
+        MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+        String jsonPaths = mapper.writeValueAsString(items);
+        builder.addPart("paths", new StringBody(jsonPaths, ContentType.APPLICATION_JSON));
+        for (File file : files) {
+            String fileRefName = file.getPath().replace("\\", "/");
+            builder.addPart("files", new FileBody(file, ContentType.APPLICATION_OCTET_STREAM, fileRefName));
+        }
+        httpPost.setEntity(builder.build());
+        return backendRestClient.executeStringRequest(httpPost);
+    }
+
+
+    private void fetchAndUpdateLocalState(Path itemsJsonPath, RepositoryMeta repoMeta, Path repoMetaJsonPath) throws Exception {
         URI uri = new URIBuilder(repoMeta.getUrl())
                 .appendPath("fetch")
-                .setParameter("repositoryId", repositoryId.toString())
                 .build();
 
         HttpGet httpGet = new HttpGet(uri);
