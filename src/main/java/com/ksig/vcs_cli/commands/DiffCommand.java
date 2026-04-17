@@ -6,14 +6,17 @@ import com.github.difflib.patch.AbstractDelta;
 import com.github.difflib.patch.Patch;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.models.ItemMeta;
+import com.ksig.vcs_cli.models.RepositoryMeta;
 import com.ksig.vcs_cli.utils.ConsoleColors;
 import com.ksig.vcs_cli.utils.RepositoryStatus;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.core5.net.URIBuilder;
 import picocli.CommandLine;
 import picocli.CommandLine.Parameters;
 import picocli.CommandLine.Command;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -37,9 +40,10 @@ public class DiffCommand implements Callable<Integer> {
         try {
             Path repoRoot = RepositoryStatus.findRepositoryRoot();
 
+            RepositoryMeta repoMata = RepositoryStatus.getRepositoryMeta();
             List<String> currentLines = Files.readAllLines(repoRoot.resolve(filePath));
 
-            List<String> baseLines = getFileContentByRevision(filePath, revision);
+            List<String> baseLines = getFileContentByRevision(filePath, revision, repoMata.getUrl());
 
             generateDiff(baseLines, currentLines);
             return 0;
@@ -67,17 +71,13 @@ public class DiffCommand implements Callable<Integer> {
         }
     }
 
-    private List<String> getFileContentByRevision(String path, Long revision) throws Exception {
-        UUID repositoryId = getRepositoryMeta().getId();
-        StringBuilder urlBuilder = new StringBuilder(GlobarParams.BASE_URL)
-                .append("/api/pull/")
-                .append(repositoryId)
-                .append("/content?path=")
-                .append(path);
+    private List<String> getFileContentByRevision(String path, Long revision, String baseUrl) throws Exception {
+        URIBuilder urlBuilder = new URIBuilder(baseUrl).appendPath("content").addParameter("path", path);
 
         if (revision != null) {
-            urlBuilder.append("&rev=").append(revision);
+            urlBuilder.addParameter("rev", String.valueOf(revision));
         }
+
         HttpGet request = new HttpGet(urlBuilder.toString());
         String content = backendRestClient.executeStringRequest(request);
         return Arrays.asList(content.split("\\R"));

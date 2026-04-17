@@ -5,9 +5,13 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ksig.vcs_cli.async.PullItemsTask;
 import com.ksig.vcs_cli.exceptions.NotARepoException;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.http.BackendRestClient;
@@ -55,7 +59,8 @@ public class PullCommand implements Callable<Integer> {
         }
         //правя рекуест
         List<LocalItemMetadata> requestItems = itemsMeta.stream().map(LocalItemMetadata::fromItemMeta).toList();
-        URI uri = new URIBuilder(repoMeta.getUrl()).appendPath("sync-status").build();
+        URIBuilder baseURL = new URIBuilder(repoMeta.getUrl());
+        URI uri = baseURL.appendPath("sync-status").build();
         HttpPost httpPost = new HttpPost(uri);
         httpPost.setEntity(new StringEntity(mapper.writeValueAsString(requestItems)));
         String response = null;
@@ -79,17 +84,11 @@ public class PullCommand implements Callable<Integer> {
         }
         // за ламбдата
         RepositoryStatus.StatusResult finalStatusResult = statusResult;
-        List<SyncItemView> deletedItems = itemsToSync.stream()
-                .filter(item -> item.getStatus().equals(SyncStatus.DELETED_REMOTE))
-                .peek(item -> item.setPath(String.valueOf(finalStatusResult.repoRoot.resolve(item.getPath()))))
-                .toList();
-        List<SyncItemView> newItems =  itemsToSync.stream()
-                .filter(item -> item.getStatus().equals(SyncStatus.NEW_REMOTE))
-                .peek(item -> item.setPath(String.valueOf(finalStatusResult.repoRoot.resolve(item.getPath()))))
-                .toList();
-        List<SyncItemView> modifiedItems = itemsToSync.stream().filter(item -> item.getStatus().equals(SyncStatus.MODIFIED_REMOTE)).toList();
+        try (ExecutorService executor = Executors.newFixedThreadPool(itemsToSync.size())) {
+            itemsToSync.stream()
+                    .peek(item -> item.setLocalPath(finalStatusResult.repoRoot.resolve(item.getPath())))
+                    .forEach(item -> executor.submit(new PullItemsTask(item, backendRestClient, baseURL)));
+        }
         return 0;
-
-        //TODO FINISH LATER
     }
 }
