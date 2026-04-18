@@ -2,12 +2,10 @@ package com.ksig.vcs_cli.commands;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,6 +19,7 @@ import com.ksig.vcs_cli.models.RepositoryMeta;
 import com.ksig.vcs_cli.models.SyncItemView;
 import com.ksig.vcs_cli.models.enums.SyncStatus;
 import com.ksig.vcs_cli.utils.RepositoryStatus;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.net.URIBuilder;
@@ -59,9 +58,11 @@ public class PullCommand implements Callable<Integer> {
         }
         //правя рекуест
         List<LocalItemMetadata> requestItems = itemsMeta.stream().map(LocalItemMetadata::fromItemMeta).toList();
-        URIBuilder baseURL = new URIBuilder(repoMeta.getUrl());
-        URI uri = baseURL.appendPath("sync-status").build();
+        URI baseURL = new URI(repoMeta.getUrl());
+        URI uri = new URIBuilder(baseURL).appendPath("sync-status").build();
         HttpPost httpPost = new HttpPost(uri);
+        httpPost.setHeader("Accept", "application/json");
+        httpPost.setHeader("Content-type", "application/json");
         httpPost.setEntity(new StringEntity(mapper.writeValueAsString(requestItems)));
         String response = null;
         try {
@@ -84,11 +85,62 @@ public class PullCommand implements Callable<Integer> {
         }
         // за ламбдата
         RepositoryStatus.StatusResult finalStatusResult = statusResult;
+        List<Future<Void>> asyncTasks = null;
         try (ExecutorService executor = Executors.newFixedThreadPool(itemsToSync.size())) {
-            itemsToSync.stream()
+
+            asyncTasks = itemsToSync.stream()
                     .peek(item -> item.setLocalPath(finalStatusResult.repoRoot.resolve(item.getPath())))
-                    .forEach(item -> executor.submit(new PullItemsTask(item, backendRestClient, baseURL)));
+                    .map(item -> executor.submit(new PullItemsTask(item, backendRestClient, baseURL))).toList();
+
+            for (Future<Void> future : asyncTasks) {
+                try {
+                    future.get();
+                } catch (ExecutionException e) {
+                    System.err.println("A synchronization task failed: " + e.getCause());
+
+                    executor.shutdownNow();
+
+                    return 1;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    System.err.println("Main thread was interrupted while waiting.");
+                    return 1;
+                }
+            }
+
+            System.out.println("Pull successful.");
+            try {
+                fetchAndUpdateLocalState(itemsJsonPath, repoMeta, repoMetaJsonPath);
+            } catch (Exception e) {
+                System.err.println("Failed to fetch and update local state! Run tu-vcs fetch!");
+            }
         }
         return 0;
+    }
+
+    private void fetchAndUpdateLocalState(Path itemsJsonPath, RepositoryMeta repoMeta, Path repoMetaJsonPath) throws Exception {
+        URI uri = new URIBuilder(repoMeta.getUrl())
+                .appendPath("fetch")
+                .build();
+
+        HttpGet httpGet = new HttpGet(uri);
+        String response = backendRestClient.executeStringRequest(httpGet);
+
+        List<ItemMeta> fetchedItems = null;
+        try {
+            fetchedItems = mapper.readValue(response, new TypeReference<List<ItemMeta>>() {});
+        } catch (Exception e) {
+            System.err.println("Fetch failed! Try tu-vcs fetch again later.");
+            return;
+        }
+        Files.writeString(itemsJsonPath, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(fetchedItems));
+        //вземам най-големия revision, тест сегашния
+        long currentRevision = fetchedItems.stream()
+                .mapToLong(ItemMeta::getRevisionNumber)
+                .max()
+                .orElse(0);
+        repoMeta.setRevision(currentRevision);
+        Files.writeString(repoMetaJsonPath, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(repoMeta));
+        System.out.println("Local tracking state updated.");
     }
 }

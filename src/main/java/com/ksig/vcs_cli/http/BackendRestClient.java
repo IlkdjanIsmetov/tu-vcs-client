@@ -54,6 +54,21 @@ public class BackendRestClient {
         }
     }
 
+    public Path downloadFileWithFileName(HttpUriRequestBase request, Path downloadPath) throws Exception {
+        try (CloseableHttpResponse response = executeAuthenticatedRequest(request)) {
+            if (response.getCode() >= 200 && response.getCode() < 300) {
+                String dispositionHeader = response.getHeader("Content-Disposition").getValue();
+                if (Files.exists(downloadPath)) {
+                    throw new RuntimeException("File " + downloadPath + " already exists");
+                }
+                Files.copy(response.getEntity().getContent(), downloadPath, StandardCopyOption.REPLACE_EXISTING);
+                return downloadPath;
+            } else {
+                throw new RuntimeException("Server returned status " + response.getCode() + ": " + response.getEntity());
+            }
+        }
+    }
+
     private CloseableHttpResponse executeAuthenticatedRequest(HttpUriRequestBase request) {
         String accessToken = tokenStorage.getAccessToken();
 

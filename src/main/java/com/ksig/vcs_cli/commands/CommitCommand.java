@@ -79,6 +79,7 @@ public class CommitCommand implements Callable<Integer> {
             lastRevisionNumber = getLatestRevNumber(repoMeta);
         } catch (Exception e) {
             System.err.println("Failed to read last revision number!");
+            System.err.println(e.getMessage());
             return 1;
         }
 

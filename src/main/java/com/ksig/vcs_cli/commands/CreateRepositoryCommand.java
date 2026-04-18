@@ -42,6 +42,7 @@ public class CreateRepositoryCommand implements Callable<Integer> {
             response = sendRequestToServer(repoRequest);
         } catch (Exception e) {
             System.err.println("Failed to send repository request!");
+            System.err.println(e.getMessage());
             return 1;
         }
         try {
