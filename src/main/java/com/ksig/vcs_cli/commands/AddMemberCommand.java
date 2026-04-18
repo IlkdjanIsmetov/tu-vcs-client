@@ -67,6 +67,7 @@ public class AddMemberCommand implements Callable<Integer> {
             System.err.println("Failed to add member to repository!");
             return 1;
         }
+        System.out.println("Successfully added user to the repository!");
         return 0;
     }
 }

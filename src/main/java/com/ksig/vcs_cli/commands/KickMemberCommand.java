@@ -34,6 +34,7 @@ public class KickMemberCommand implements Callable<Integer> {
             System.err.println("Failed to kick member from this repository!");
             return 1;
         }
+        System.out.println("Successfully kicked member from the repository!");
         return 0;
     }
 }

@@ -56,6 +56,19 @@ public class PullCommand implements Callable<Integer> {
             System.err.println("Failed to read repository meta!");
             return 1;
         }
+
+        long lastRevisionNumber;
+        try {
+            lastRevisionNumber = getLatestRevNumber(repoMeta);
+        } catch (Exception e) {
+            System.err.println("Failed to read last revision number!");
+            System.err.println(e.getMessage());
+            return 1;
+        }
+        if (repoMeta.getRevision() == lastRevisionNumber) {
+            System.out.println("You are up to date!");
+            return 0;
+        }
         //правя рекуест
         List<LocalItemMetadata> requestItems = itemsMeta.stream().map(LocalItemMetadata::fromItemMeta).toList();
         URI baseURL = new URI(repoMeta.getUrl());
@@ -142,5 +155,11 @@ public class PullCommand implements Callable<Integer> {
         repoMeta.setRevision(currentRevision);
         Files.writeString(repoMetaJsonPath, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(repoMeta));
         System.out.println("Local tracking state updated.");
+    }
+
+    private long getLatestRevNumber(RepositoryMeta repoMeta) throws Exception {
+        URI uri = new URIBuilder(repoMeta.getUrl()).appendPath("latestRevNumber").build();
+        HttpGet httpGet = new HttpGet(uri);
+        return Long.parseLong(backendRestClient.executeStringRequest(httpGet));
     }
 }
