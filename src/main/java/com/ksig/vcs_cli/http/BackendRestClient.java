@@ -104,10 +104,10 @@ public class BackendRestClient {
 
             return response;
 
+        } catch (NotLoggedInException e) {
+            throw e;
         } catch (SessionExpiredException e) {
             throw e;
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to read tokens: " + e.getMessage());
         } catch (Exception e) {
             throw new RuntimeException("API Request failed: " + e.getMessage());
         }

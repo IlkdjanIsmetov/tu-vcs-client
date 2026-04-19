@@ -174,7 +174,21 @@ class BackendRestClientTest {
     void executeAuthenticatedRequest_shouldThrow_whenNoAccessToken() throws Exception {
         BackendRestClient client = new BackendRestClient();
 
-        inject(client, "tokenStorage", token(null, null));
+        TokenStorageModule fake = new TokenStorageModule() {
+            @Override
+            public String getAccessToken() {
+                return null;
+            }
+
+            @Override
+            public String getRefreshToken() {
+                return null;
+            }
+        };
+
+        Field f = BackendRestClient.class.getDeclaredField("tokenStorage");
+        f.setAccessible(true);
+        f.set(client, fake);
 
         Method m = BackendRestClient.class
                 .getDeclaredMethod("executeAuthenticatedRequest", HttpUriRequestBase.class);
@@ -183,11 +197,12 @@ class BackendRestClientTest {
         HttpUriRequestBase request =
                 new HttpUriRequestBase("GET", java.net.URI.create("http://localhost")) {};
 
-        Throwable ex = assertThrows(Throwable.class,
+        Exception ex = assertThrows(Exception.class,
                 () -> m.invoke(client, request));
 
-        assertTrue(ex instanceof java.lang.reflect.InvocationTargetException);
-        assertTrue(ex.getCause() instanceof NotLoggedInException);
+        Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+
+        assertInstanceOf(NotLoggedInException.class, cause);
     }
 
     @Test
