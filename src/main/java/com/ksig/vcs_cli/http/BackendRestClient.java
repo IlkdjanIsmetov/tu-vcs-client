@@ -10,6 +10,7 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -43,9 +44,11 @@ public class BackendRestClient {
                 String dispositionHeader = response.getHeader("Content-Disposition").getValue();
                 String fileName = dispositionHeader.replaceFirst("(?i)^.*filename=\"([^\"]+)\".*$", "$1");
                 downloadPath = downloadPath.resolve(fileName);
+
                 if (Files.exists(downloadPath)) {
                     throw new RuntimeException("File " + fileName + " already exists");
                 }
+
                 Files.copy(response.getEntity().getContent(), downloadPath, StandardCopyOption.REPLACE_EXISTING);
                 return downloadPath;
             } else {
@@ -57,10 +60,11 @@ public class BackendRestClient {
     public Path downloadFileWithFileName(HttpUriRequestBase request, Path downloadPath) throws Exception {
         try (CloseableHttpResponse response = executeAuthenticatedRequest(request)) {
             if (response.getCode() >= 200 && response.getCode() < 300) {
-                String dispositionHeader = response.getHeader("Content-Disposition").getValue();
+
                 if (Files.exists(downloadPath)) {
                     throw new RuntimeException("File " + downloadPath + " already exists");
                 }
+
                 Files.copy(response.getEntity().getContent(), downloadPath, StandardCopyOption.REPLACE_EXISTING);
                 return downloadPath;
             } else {
@@ -70,15 +74,15 @@ public class BackendRestClient {
     }
 
     private CloseableHttpResponse executeAuthenticatedRequest(HttpUriRequestBase request) {
-        String accessToken = tokenStorage.getAccessToken();
-
-        if (accessToken == null) {
-            throw new NotLoggedInException();
-        }
-
-        request.setHeader("Authorization", "Bearer " + accessToken);
-
         try {
+            String accessToken = tokenStorage.getAccessToken();
+
+            if (accessToken == null) {
+                throw new NotLoggedInException();
+            }
+
+            request.setHeader("Authorization", "Bearer " + accessToken);
+
             CloseableHttpResponse response = httpClient.execute(request);
 
             if (response.getCode() == 401) {
@@ -97,9 +101,13 @@ public class BackendRestClient {
                     throw new SessionExpiredException();
                 }
             }
+
             return response;
+
         } catch (SessionExpiredException e) {
             throw e;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read tokens: " + e.getMessage());
         } catch (Exception e) {
             throw new RuntimeException("API Request failed: " + e.getMessage());
         }

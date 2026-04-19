@@ -47,7 +47,7 @@ public class DiffCommand implements Callable<Integer> {
 
             generateDiff(baseLines, currentLines);
             return 0;
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             return 1;
         }

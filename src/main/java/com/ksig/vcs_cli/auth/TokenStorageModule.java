@@ -1,5 +1,6 @@
 package com.ksig.vcs_cli.auth;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -48,28 +49,36 @@ public class TokenStorageModule {
 
     public String getAccessToken() {
         try {
-            Path filePath = getCredentialsFilePath();
-            if (!Files.exists(filePath)) {
+            Path credentialsPath = Path.of(System.getProperty("user.home"), ".tu_vcs", "credentials.json");
+
+            if (!Files.exists(credentialsPath)) {
                 return null;
             }
 
-            String content = Files.readString(filePath);
-            return objectMapper.readTree(content).get("access_token").asText();
-        } catch (IOException e) {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(Files.readString(credentialsPath));
+
+            return root.path("access_token").asText(null);
+
+        } catch (Exception e) {
             return null;
         }
     }
-    
+
     public String getRefreshToken() {
         try {
-            Path filePath = getCredentialsFilePath();
-            if (!Files.exists(filePath)) {
+            Path credentialsPath = Path.of(System.getProperty("user.home"), ".tu_vcs", "credentials.json");
+
+            if (!Files.exists(credentialsPath)) {
                 return null;
             }
 
-            String content = Files.readString(filePath);
-            return objectMapper.readTree(content).get("refresh_token").asText();
-        } catch (IOException e) {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(Files.readString(credentialsPath));
+
+            return root.path("refresh_token").asText(null);
+
+        } catch (Exception e) {
             return null;
         }
     }
