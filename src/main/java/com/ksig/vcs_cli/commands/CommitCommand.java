@@ -20,6 +20,7 @@ import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
 import org.apache.hc.client5.http.entity.mime.StringBody;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.net.URIBuilder;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -159,24 +160,31 @@ public class CommitCommand implements Callable<Integer> {
         req.setBaseRevisionNUmber(repoMeta.getRevision());
         String changeRequestId;
         try {
-            changeRequestId = createChangeRequest(repoMeta);
+            changeRequestId = createChangeRequest(repoMeta, req);
         } catch (Exception e) {
             System.err.println("Failed to create change request!");
+            e.printStackTrace();
             return 1;
         }
         try {
             addItemsToChangeRequest(itemsToCommit, filesToUpload, repoMeta.getUrl(), changeRequestId);
         } catch (Exception e) {
             System.err.println("Failed to add items to change request!");
+            e.printStackTrace();
             return 1;
         }
+        System.out.println("Successfully made change request!");
         return 0;
     }
 
-    private String createChangeRequest(RepositoryMeta repoMeta) throws Exception {
+    private String createChangeRequest(RepositoryMeta repoMeta, CreateCRView cr) throws Exception {
         URI uri = new URIBuilder(repoMeta.getUrl()).appendPath("change-request").build();
         HttpPost httpPost = new HttpPost(uri);
-        return backendRestClient.executeStringRequest(httpPost);
+        httpPost.setHeader("Accept", "application/json");
+        httpPost.setHeader("Content-Type", "application/json");
+        httpPost.setEntity(new StringEntity(mapper.writeValueAsString(cr)));
+        String response = backendRestClient.executeStringRequest(httpPost);
+        return response.replace("\"", "");
     }
 
     private int commitDirectly(List<ItemRequest> itemsToCommit, List<File> filesToUpload, RepositoryMeta repoMeta, Path itemsJsonPath, Path repoMetaJsonPath) {
