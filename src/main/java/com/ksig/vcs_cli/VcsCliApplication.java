@@ -13,7 +13,7 @@ import java.util.concurrent.Callable;
          subcommands = { LoginCommand.class, CreateRepositoryCommand.class, FetchCommand.class,
                  StatusCommand.class, CommitCommand.class, CloneCommand.class,
                  AddMemberCommand.class, KickMemberCommand.class, DeleteCommand.class,
-                 DiffCommand.class, PullCommand.class, ApproveChangeRequestCommand.class, RejectChangeRequestCommand.class })
+                 DiffCommand.class, PullCommand.class, ApproveChangeRequestCommand.class, RejectChangeRequestCommand.class, SwitchCommand.class })
 public class VcsCliApplication implements Callable<Integer> {
 
     @Override
