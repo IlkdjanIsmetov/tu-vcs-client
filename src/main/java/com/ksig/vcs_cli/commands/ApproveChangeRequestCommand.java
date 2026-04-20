@@ -5,6 +5,7 @@ import java.net.URI;
 import java.util.concurrent.Callable;
 
 import com.ksig.vcs_cli.exceptions.NotARepoException;
+import com.ksig.vcs_cli.exceptions.NotLoggedInException;
 import com.ksig.vcs_cli.http.BackendRestClient;
 import com.ksig.vcs_cli.models.RepositoryMeta;
 import com.ksig.vcs_cli.utils.RepositoryStatus;
@@ -36,10 +37,14 @@ public class ApproveChangeRequestCommand implements Callable<Integer> {
         HttpPost  post = new HttpPost(url);
         try {
             backendRestClient.executeStringRequest(post);
+        } catch (NotLoggedInException e) {
+            System.err.println(e.getMessage());
+            return 1;
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             return 1;
         }
+        System.out.println("Change request approved!");
         return 0;
     }
 }

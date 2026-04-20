@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ksig.vcs_cli.async.PullItemsTask;
 import com.ksig.vcs_cli.exceptions.NotARepoException;
+import com.ksig.vcs_cli.exceptions.NotLoggedInException;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.http.BackendRestClient;
 import com.ksig.vcs_cli.models.ItemMeta;
@@ -43,6 +44,10 @@ public class SwitchCommand implements Callable<Integer> {
     @Option(names = {"-l", "--latest"}, required = false, description = "Switch to latest revision")
     private boolean latest;
 
+    public SwitchCommand() {
+        this.backendRestClient = new BackendRestClient();
+        this.mapper = new ObjectMapper();
+    }
 
     public SwitchCommand(BackendRestClient backendRestClient, ObjectMapper mapper) {
         this.backendRestClient = backendRestClient;
@@ -73,6 +78,9 @@ public class SwitchCommand implements Callable<Integer> {
         long lastRevisionNumber;
         try {
             lastRevisionNumber = getLatestRevNumber(repoMeta);
+        } catch (NotLoggedInException e) {
+            System.err.println(e.getMessage());
+            return 1;
         } catch (Exception e) {
             System.err.println("Failed to read last revision number!");
             System.err.println(e.getMessage());
@@ -114,6 +122,9 @@ public class SwitchCommand implements Callable<Integer> {
         String response;
         try {
             response = backendRestClient.executeStringRequest(httpGet);
+        } catch (NotLoggedInException e) {
+            System.err.println(e.getMessage());
+            return 1;
         } catch (Exception e) {
             System.err.println("Failed to fetch items from repository!");
             System.err.println(e.getMessage());

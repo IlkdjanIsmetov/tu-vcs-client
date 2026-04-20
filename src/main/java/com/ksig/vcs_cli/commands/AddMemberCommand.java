@@ -1,6 +1,7 @@
 package com.ksig.vcs_cli.commands;
 
 import com.ksig.vcs_cli.exceptions.NotARepoException;
+import com.ksig.vcs_cli.exceptions.NotLoggedInException;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.http.BackendRestClient;
 import com.ksig.vcs_cli.models.RepositoryMeta;
@@ -63,6 +64,9 @@ public class AddMemberCommand implements Callable<Integer> {
         BackendRestClient  backendRestClient = new BackendRestClient();
         try {
             backendRestClient.executeStringRequest(httpPost);
+        } catch (NotLoggedInException e) {
+            System.err.println(e.getMessage());
+            return 1;
         } catch (Exception e) {
             System.err.println("Failed to add member to repository!");
             return 1;

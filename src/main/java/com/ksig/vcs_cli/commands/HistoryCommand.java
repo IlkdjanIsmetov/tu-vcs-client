@@ -11,7 +11,10 @@ import java.util.concurrent.Callable;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ksig.vcs_cli.exceptions.NotARepoException;
+import com.ksig.vcs_cli.exceptions.NotLoggedInException;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.http.BackendRestClient;
 import com.ksig.vcs_cli.models.CommitHistoryView;
@@ -23,10 +26,17 @@ import picocli.CommandLine.Command;
 
 @Command(name = "history", description = "See commit history of this repository")
 public class HistoryCommand implements Callable<Integer> {
-    private final BackendRestClient backendRestClient = new BackendRestClient();
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final BackendRestClient backendRestClient;
+    private final ObjectMapper mapper;
     private static final DateTimeFormatter DATE_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
+
+    public HistoryCommand() {
+        backendRestClient = new BackendRestClient();
+        this.mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    }
 
     @Override
     public Integer call() throws Exception {
@@ -67,6 +77,9 @@ public class HistoryCommand implements Callable<Integer> {
         String response;
         try {
             response = backendRestClient.executeStringRequest(httpGet);
+        } catch (NotLoggedInException e) {
+            System.err.println(e.getMessage());
+            return 1;
         } catch (Exception e) {
             System.err.println("Failed to execute HTTP request!");
             return 1;

@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.concurrent.Callable;
 
 import com.ksig.vcs_cli.exceptions.NotARepoException;
+import com.ksig.vcs_cli.exceptions.NotLoggedInException;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.http.BackendRestClient;
 import com.ksig.vcs_cli.models.RepositoryMeta;
@@ -55,6 +56,9 @@ public class DeleteCommand implements Callable<Integer> {
         BackendRestClient backendRestClient = new BackendRestClient();
         try {
             backendRestClient.executeStringRequest(httpDelete);
+        } catch (NotLoggedInException e) {
+            System.err.println(e.getMessage());
+            return 1;
         } catch (Exception e) {
             System.err.println("Failed to delete repository! Try again later.");
             return 1;

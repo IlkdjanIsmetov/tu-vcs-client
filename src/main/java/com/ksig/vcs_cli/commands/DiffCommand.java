@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.difflib.DiffUtils;
 import com.github.difflib.patch.AbstractDelta;
 import com.github.difflib.patch.Patch;
+import com.ksig.vcs_cli.exceptions.NotLoggedInException;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.models.ItemMeta;
 import com.ksig.vcs_cli.models.RepositoryMeta;
@@ -43,8 +44,13 @@ public class DiffCommand implements Callable<Integer> {
             RepositoryMeta repoMata = RepositoryStatus.getRepositoryMeta();
             List<String> currentLines = Files.readAllLines(repoRoot.resolve(filePath));
 
-            List<String> baseLines = getFileContentByRevision(filePath, revision, repoMata.getUrl());
-
+            List<String> baseLines = null;
+            try {
+                baseLines = getFileContentByRevision(filePath, revision, repoMata.getUrl());
+            } catch (NotLoggedInException e) {
+                System.err.println(e.getMessage());
+                return 1;
+            }
             generateDiff(baseLines, currentLines);
             return 0;
         } catch (Exception e) {

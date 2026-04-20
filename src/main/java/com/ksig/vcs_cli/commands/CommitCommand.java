@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ksig.vcs_cli.exceptions.NotARepoException;
+import com.ksig.vcs_cli.exceptions.NotLoggedInException;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.http.BackendRestClient;
 import com.ksig.vcs_cli.models.CreateCRView;
@@ -78,6 +79,9 @@ public class CommitCommand implements Callable<Integer> {
         long lastRevisionNumber;
         try {
             lastRevisionNumber = getLatestRevNumber(repoMeta);
+        } catch (NotLoggedInException e) {
+            System.err.println(e.getMessage());
+            return 1;
         } catch (Exception e) {
             System.err.println("Failed to read last revision number!");
             System.err.println(e.getMessage());
@@ -161,6 +165,9 @@ public class CommitCommand implements Callable<Integer> {
         String changeRequestId;
         try {
             changeRequestId = createChangeRequest(repoMeta, req);
+        } catch (NotLoggedInException e) {
+            System.err.println(e.getMessage());
+            return 1;
         } catch (Exception e) {
             System.err.println("Failed to create change request!");
             e.printStackTrace();
@@ -168,6 +175,9 @@ public class CommitCommand implements Callable<Integer> {
         }
         try {
             addItemsToChangeRequest(itemsToCommit, filesToUpload, repoMeta.getUrl(), changeRequestId);
+        } catch (NotLoggedInException e) {
+            System.err.println(e.getMessage());
+            return 1;
         } catch (Exception e) {
             System.err.println("Failed to add items to change request!");
             e.printStackTrace();
@@ -191,7 +201,11 @@ public class CommitCommand implements Callable<Integer> {
         String response = null;
         try {
             response = sendCommitRequest(itemsToCommit, filesToUpload, repoMeta.getUrl());
-        } catch (Exception e) {
+        } catch (NotLoggedInException e) {
+            System.err.println(e.getMessage());
+            return 1;
+        }
+        catch (Exception e) {
             System.err.println("Failed to send commit request!");
             System.out.println(e + e.getMessage());
             return 1;
@@ -200,6 +214,10 @@ public class CommitCommand implements Callable<Integer> {
             System.out.println("Commit successful.");
             try {
                 fetchAndUpdateLocalState(itemsJsonPath, repoMeta, repoMetaJsonPath);
+            } catch (NotLoggedInException e) {
+                System.err.println("Failed to fetch and update local state! Run tu-vcs fetch!");
+                System.err.println(e.getMessage());
+                return 1;
             } catch (Exception e) {
                 System.err.println("Failed to fetch and update local state! Run tu-vcs fetch!");
             }

@@ -1,6 +1,7 @@
 package com.ksig.vcs_cli.commands;
 
 import com.ksig.vcs_cli.exceptions.NotARepoException;
+import com.ksig.vcs_cli.exceptions.NotLoggedInException;
 import com.ksig.vcs_cli.http.BackendRestClient;
 import com.ksig.vcs_cli.models.RepositoryMeta;
 import com.ksig.vcs_cli.utils.RepositoryStatus;
@@ -33,14 +34,18 @@ public class RejectChangeRequestCommand implements Callable<Integer> {
             return 1;
         }
 
-        URI url = new URIBuilder(repoMeta.getUrl()).appendPath("change-request").appendPath(changeRequestId).appendPath("approve").build();
+        URI url = new URIBuilder(repoMeta.getUrl()).appendPath("change-request").appendPath(changeRequestId).appendPath("reject").build();
         HttpPost post = new HttpPost(url);
         try {
             backendRestClient.executeStringRequest(post);
+        } catch (NotLoggedInException e) {
+            System.err.println(e.getMessage());
+            return 1;
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             return 1;
         }
+        System.out.println("Change request rejected!");
         return 0;
     }
 }

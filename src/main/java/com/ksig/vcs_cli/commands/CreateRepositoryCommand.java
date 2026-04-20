@@ -11,6 +11,7 @@ import java.util.concurrent.Callable;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.ksig.vcs_cli.exceptions.NotLoggedInException;
 import com.ksig.vcs_cli.globalParams.GlobarParams;
 import com.ksig.vcs_cli.http.BackendRestClient;
 import com.ksig.vcs_cli.models.RepositoryRequest;
@@ -40,6 +41,9 @@ public class CreateRepositoryCommand implements Callable<Integer> {
         String response = null;
         try {
             response = sendRequestToServer(repoRequest);
+        } catch (NotLoggedInException e) {
+            System.err.println(e.getMessage());
+            return 1;
         } catch (Exception e) {
             System.err.println("Failed to send repository request!");
             System.err.println(e.getMessage());

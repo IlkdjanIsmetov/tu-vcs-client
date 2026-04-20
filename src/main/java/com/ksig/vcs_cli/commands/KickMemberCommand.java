@@ -1,5 +1,6 @@
 package com.ksig.vcs_cli.commands;
 
+import com.ksig.vcs_cli.exceptions.NotLoggedInException;
 import com.ksig.vcs_cli.http.BackendRestClient;
 import com.ksig.vcs_cli.models.RepositoryMeta;
 import com.ksig.vcs_cli.utils.RepositoryStatus;
@@ -30,6 +31,9 @@ public class KickMemberCommand implements Callable<Integer> {
         BackendRestClient backendRestClient = new BackendRestClient();
         try {
             backendRestClient.executeStringRequest(httpDelete);
+        } catch (NotLoggedInException e) {
+            System.err.println(e.getMessage());
+            return 1;
         } catch (Exception e) {
             System.err.println("Failed to kick member from this repository!");
             return 1;
