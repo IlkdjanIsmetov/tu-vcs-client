@@ -10,6 +10,7 @@ import com.ksig.vcs_cli.http.BackendRestClient;
 import com.ksig.vcs_cli.models.ItemMeta;
 import com.ksig.vcs_cli.models.RepositoryMeta;
 import com.ksig.vcs_cli.models.SyncItemView;
+import com.ksig.vcs_cli.models.enums.ItemType;
 import com.ksig.vcs_cli.models.enums.SyncStatus;
 import com.ksig.vcs_cli.utils.RepositoryStatus;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
@@ -70,6 +71,11 @@ public class SwitchCommand implements Callable<Integer> {
             return 1;
         }
 
+        if (revision == repoMeta.getRevision()) {
+            System.out.println("You are already on revision " + revision);
+            return 0;
+        }
+
         if (latest && revision > 0) {
             System.err.println("Error: You cannot specify both the 'latest' flag and a specific revision number.");
             return 1;
@@ -85,6 +91,11 @@ public class SwitchCommand implements Callable<Integer> {
             System.err.println("Failed to read last revision number!");
             System.err.println(e.getMessage());
             return 1;
+        }
+
+        if (latest && repoMeta.getRevision() == lastRevisionNumber) {
+            System.out.println("You are already on latest revision");
+            return 0;
         }
 
         if (!latest) {
@@ -151,7 +162,10 @@ public class SwitchCommand implements Callable<Integer> {
                 itemsToSync.add(buildSyncView(revisionItem, SyncStatus.NEW_REMOTE));
                 continue;
             }
-
+            if (localItem.getItemType().equals(ItemType.DIRECTORY)) {
+                localItemsMap.remove(revisionItem.getPath());
+                continue;
+            }
             if (localItem.getChecksum().equals(revisionItem.getChecksum())) {
                 //едни същи са
                 localItemsMap.remove(revisionItem.getPath());
@@ -196,6 +210,12 @@ public class SwitchCommand implements Callable<Integer> {
             System.out.println("Switch successful.");
             try {
                 Files.write(itemMetaJsonPath, response.getBytes());
+                if (latest) {
+                    repoMeta.setRevision(lastRevisionNumber);
+                } else {
+                    repoMeta.setRevision(revision);
+                }
+                Files.writeString(repoMetaJsonPath, mapper.writerWithDefaultPrettyPrinter().writeValueAsString(repoMeta));
             } catch (Exception e) {
                 System.err.println("Failed to write items metadata!");
                 return 1;

@@ -86,7 +86,7 @@ public class BackendRestClient {
             CloseableHttpResponse response = httpClient.execute(request);
 
             if (response.getCode() == 401) {
-                System.out.println("Session expired. Attempting to refresh token...");
+//                System.out.println("Session expired. Attempting to refresh token...");
                 response.close();
 
                 String refreshToken = tokenStorage.getRefreshToken();
