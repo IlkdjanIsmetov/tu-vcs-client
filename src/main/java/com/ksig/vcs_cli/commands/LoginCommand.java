@@ -15,9 +15,10 @@ public class LoginCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         String username = System.console().readLine("Username: ");
-        String password = System.console().readLine("Password: ");
+        char[] passwordChars = System.console().readPassword("Password: ");
         System.out.println("Authenticating user: " + username + "...");
         KeycloakClient authClient = new KeycloakClient();
+        String password = new String(passwordChars);
         boolean success = authClient.authenticate(username, password);
         
         if (success) {
