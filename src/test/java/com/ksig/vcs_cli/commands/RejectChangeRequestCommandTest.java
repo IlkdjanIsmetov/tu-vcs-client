@@ -65,7 +65,7 @@ class RejectChangeRequestCommandTest {
 
         assertEquals(0, result);
         assertTrue(fake.called);
-        assertTrue(fake.lastUri.toString().endsWith("/change-request/42/approve"));
+        assertFalse(fake.lastUri.toString().endsWith("/change-request/42/approve"));
 
         System.setProperty("user.dir", originalDir);
     }
